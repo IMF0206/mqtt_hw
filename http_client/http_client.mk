@@ -1,0 +1,7 @@
+HTTPCLIENT = http_client.o
+
+HTTPCLIENT_DIR = $(COMM_DIR)/http_client
+
+CC_INCLUDE += -I$(HTTPCLIENT_DIR)
+VPATH += $(HTTPCLIENT_DIR)
+

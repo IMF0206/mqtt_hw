@@ -19,6 +19,31 @@ int sql_exec_with_return_callback(void* data, int argc, char **argv, char**azCol
     return 0;
 }
 
+int sql_exec_multicol_return_callback(void* data, int argc, char **argv, char**azColName)
+{
+    if (argc != 1)
+    {
+        printf("column num is %d.\n", argc);
+        // return -1;
+    }
+
+    std::vector<std::string> *pRetValue = (std::vector<std::string>*)data;
+
+    for (int i = 0; i < argc; i++)
+    {
+        if (argv[i] != NULL)
+        {
+            pRetValue->push_back(argv[i]);
+        }
+        else
+        {
+            pRetValue->push_back("");
+        }
+    }
+    
+    return 0;
+}
+
 db_helper::db_helper(std::string s_path)
 {
     m_path = s_path;
@@ -47,6 +72,21 @@ int db_helper::sql_exec_with_return(std::string s_sql)
     }
     int rc = 0;
     rc = db_exec(s_sql.c_str());
+
+    db_close();
+}
+
+int db_helper::sql_exec_multicol_return(std::string s_sql)
+{
+    db_open();
+        m_resultvec.clear();
+    if (m_db == NULL)
+    {
+        printf("m_db is NULL.\n");
+        return -1;
+    }
+    int rc = 0;
+    rc = db_multicol_exec(s_sql.c_str());
 
     db_close();
 }
@@ -113,3 +153,17 @@ int db_helper::db_exec(const char *sql)
     return 0;
 }
 
+int db_helper::db_multicol_exec(const char *sql)
+{
+    char *errmsg = NULL;
+    int rc = sqlite3_exec(m_db, sql, sql_exec_multicol_return_callback, (void*)&m_resultvec, &errmsg);
+    if (rc != SQLITE_OK)
+    {
+        printf("SQL error: %s\n", errmsg);
+        sqlite3_free(errmsg);
+
+        return -1;
+    }
+
+    return 0;
+}

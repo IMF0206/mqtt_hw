@@ -45,6 +45,12 @@ public:
     void create_json_event_upload(frame_info* Frame_info);
     void parse_json_device_response(char* msg);
     device_resp* get_deviceresp();
+
+    // 创建平台侧对接的json
+    void create_json_plat_adddev();
+    void create_json_plat_update();
+    void create_json_plat_query();
+    void create_json_plat_date();
 private:
     std::string m_jsonstr;
     db_helper* m_dbhelper;

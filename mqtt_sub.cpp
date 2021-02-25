@@ -48,7 +48,7 @@ int msgarrvd(void *context, char *topicName, int topicLen, MQTTClient_message *m
 {
     printf("Message arrived\n");
     printf("topic: %s\n", topicName);
-    printf("message: %.*s\n", message->payloadlen, (char*)message->payload);
+    printf("message: %d.*s\n", message->payloadlen, (char*)message->payload);
     mqtt_json mqttJson;
     mqttJson.parse_json_device_response((char*)message->payload);
     db_helper db(DB_FILE_PATH);

@@ -3,6 +3,12 @@
 
 #include "sqlite_helper.h"
 
+// 定义对应的mid值
+#define PLAT_ADD_DEV 7
+#define PLAT_UPDATE_DEV 9
+#define PLAT_QUERY_GATE 2
+#define PLAT_COMMAND 54132
+
 typedef struct FRAMEINFO
 {
     unsigned char head_info;
@@ -47,12 +53,19 @@ public:
     device_resp* get_deviceresp();
 
     // 创建平台侧对接的json
+    std::string get_json4plat();
+    // 边设备->平台
     void create_json_plat_adddev();
-    void create_json_plat_update();
+    void create_json_plat_update(int status);
     void create_json_plat_query();
-    void create_json_plat_date();
+    void create_json_plat_command_resp();
+    void create_json_plat_date(frame_info* Frame_info);
+    // 平台->边设备
+    
+
 private:
     std::string m_jsonstr;
+    std::string m_json4plat;
     db_helper* m_dbhelper;
     device_resp* m_deviceresp;
     

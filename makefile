@@ -5,7 +5,7 @@ CXXFLAGS += -I./ -I./paho/ -I./sqlite -I./cJSON
 #CFLAGS += -I../socketmsg/
 CFLAGS += -g -fPIC -o2 -std=c11 -DOPENSSL
 CXXFLAGS += -g -fPIC -o2 -std=c++11 -DOPENSSL
-LDFLAGS += -L./openssl -L../../lib/IMX6ULL/libevent -L../../lib/IMX6ULL/paho -L../../lib/IMX6ULL/sqlite -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread  -lpaho-mqtt3cs 
+LDFLAGS += -L./openssl -L../nvr/lib/IMX6ULL/libevent -L../nvr/lib/IMX6ULL/paho -L../nvr/lib/IMX6ULL/sqlite -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread  -lpaho-mqtt3cs 
 #LDFLAGS += -L./ -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread -lpaho-mqtt3a -lpaho-mqtt3as #-lpaho-mqtt3c
 
 #CC = gcc

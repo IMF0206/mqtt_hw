@@ -19,6 +19,8 @@
 #include "mqtt_pub.h"
 #include "mqtt_sub.h"
 
+#include "mqtt_plat_parse.h"
+#include "mqtt_plat.h"
 // #include "http_client.h"
 
 #include <memory.h>
@@ -217,6 +219,9 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
     // 发送传感器上线消息
     mqtt_pub mqttpub;
     mqttpub.mqtt_pub_login_msg();
+    mqtt_plat mqttplat;
+    mqttplat.mqtt_platadddev();
+    mqttplat.mqtt_platupdatedev(1);
     sleep(1);
     mqttpub.mqtt_pub_status_update(1);
   
@@ -346,47 +351,47 @@ float getcpugap(){
 float getusercpugap(){
     std::string strRes = getValueBySystemCommand("top -b -n 1 |grep Cpu | cut -d \",\" -f 1 | cut -d \":\" -f 2");
    
-   strRes = trim(strRes);
-   printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
-   std::vector<std::string> vecT = split(strRes," ");
-   if (vecT.size() == 2){
-       printf("%s\n", vecT.at(0).c_str());
-       return atof(vecT.at(0).c_str());
-   }
-   return 0;
+    strRes = trim(strRes);
+    printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
+    std::vector<std::string> vecT = split(strRes," ");
+    if (vecT.size() == 2){
+        printf("%s\n", vecT.at(0).c_str());
+        return atof(vecT.at(0).c_str());
+    }
+    return 0;
 }
 
 float getsyscpugap(){
     std::string strRes = getValueBySystemCommand("top -b -n 1 |grep Cpu | cut -d \",\" -f 2 | cut -d \":\" -f 2");
    
-   strRes = trim(strRes);
-   printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
-   std::vector<std::string> vecT = split(strRes," ");
-   if (vecT.size() == 2){
-       printf("%s\n", vecT.at(0).c_str());
-       return atof(vecT.at(0).c_str());
-   }
-   return 0;
+    strRes = trim(strRes);
+    printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
+    std::vector<std::string> vecT = split(strRes," ");
+    if (vecT.size() == 2){
+        printf("%s\n", vecT.at(0).c_str());
+        return atof(vecT.at(0).c_str());
+    }
+    return 0;
 }
 
 float getmemgap(){
     std::string strRes = getValueBySystemCommand("top -b -n 1 |grep \"KiB Mem\" | cut -d \",\" -f 2 | cut -d \":\" -f 2");
    
-   strRes = trim(strRes);
-   printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
-   std::vector<std::string> vecT = split(strRes," ");
-   if (vecT.size() == 2){
-       printf("%s\n", vecT.at(0).c_str());
-       return atof(vecT.at(0).c_str());
-   }
-   return 0;
+    strRes = trim(strRes);
+    printf("--%s--  strRes.size : %lu \n", strRes.c_str(),strRes.length());
+    std::vector<std::string> vecT = split(strRes," ");
+    if (vecT.size() == 2){
+        printf("%s\n", vecT.at(0).c_str());
+        return atof(vecT.at(0).c_str());
+    }
+    return 0;
 }
 
 void* sysstatus_pthread(void* arg)
 {
-   printf("start \n");
-   while (1)
-   {
+    printf("start \n");
+    while (1)
+    {
         signal(SIGCHLD, SIG_IGN);
         signal(SIGPIPE, SIG_IGN);
         signal(SIGILL, SIG_IGN);
@@ -399,7 +404,7 @@ void* sysstatus_pthread(void* arg)
         mqtt_pub mqttpub;
         mqttpub.mqtt_pub_sysinfo_upload_msg(cpuusergap, cpusysgap, memgap);
         sleep(120);
-   }
+    }
 
 }
 
@@ -415,7 +420,8 @@ int main()
     pthread_create(&event_tid, NULL, event_thread, (void*)"event_thread");
     // pthread_create(&ipc_tid, NULL, ipcstatus_thread, (void*)"ipcstatus_thread");
     pthread_create(&sys_pid, NULL, sysstatus_pthread, (void*)"sysstatus_pthread");
-    mqtt_sub mqttSub;
+    mqtt_plat mqttplat;
+    mqttplat.mqtt_plat_sub_init();
     // mqttSub.mqtt_init();
     while(1)
     {
@@ -446,6 +452,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
     parse_frame(msg, len - 1, &Frame_info);
     mqtt_pub mqttPub;
     db_helper dbHelper(DB_FILE_PATH);
+    mqtt_plat mqttplat;
     std::string sql = "";
     unsigned char bufInOut[10] = {msg[10], msg[11], msg[12], msg[13], 0x01, 0x00, 0x00, 0x00, 0x00, msg[14]};
     unsigned char bufAckOut[14] = {0};
@@ -462,6 +469,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             // ACK帧
             bufferevent_write(bev, ack_reply, sizeof(ack_reply));
             mqttPub.mqtt_pub_get_dev_msg();
+            mqttplat.mqtt_platupdatedev(1);
             break;
         case 1:
             printf("拉力告警\n");
@@ -529,6 +537,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
                 Frame_info.cmd = 1;
                 mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
             }
+            mqttplat.mqtt_platdatasend(&Frame_info);
             break;
         case 6:
             printf("角度数据\n");
@@ -564,6 +573,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
                 Frame_info.cmd = 2;
                 mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
             }
+            mqttplat.mqtt_platdatasend(&Frame_info);
             break;
         case 7:
             printf("声光报警自动启动\n");
@@ -629,6 +639,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             }
             // 数据目前为假，TODO
             mqttPub.mqtt_pub_login_msg();
+            mqttplat.mqtt_platadddev();
             break;
         }
             

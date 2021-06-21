@@ -43,7 +43,7 @@ int ssl_error_cb(const char *str, size_t len, void *u)
 
 int mqtt_pub::mqtt_send(std::string jsonstr, int type)
 {
-    m_dbhelper->sql_exec_with_return("select deviceid from edgedev;");
+    m_dbhelper->sql_exec_with_return("select edgeid from edgedev;");
     // std::string cmd = "mosquitto_pub -t /v1/" + m_dbhelper->getsqlresult()[0] + "/topo/request -m " + jsonstr;
     // printf("cmd:%s\n", cmd.c_str());
     // system(cmd.c_str());
@@ -78,13 +78,22 @@ int mqtt_pub::mqtt_send(std::string jsonstr, int type)
     std::string mqportstr = m_dbhelper->getsqlresult()[0];
     // 判断是否需要进行加密
     m_dbhelper->sql_exec_with_return("select secmode from edgedev;");
-    std::string secmode = m_dbhelper->getsqlresult()[0];
+    std::string secmode;
+    if (m_dbhelper->getsqlresult().empty())
+    {
+        secmode = "0";
+    }
+    else
+    {
+        secmode = m_dbhelper->getsqlresult()[0];
+    }
     char mqttaddr[128] = {0};
     if (secmode.compare("1") == 0)
     {
         if (deviceip.size() == 0)
         {
-            deviceip = "192.168.68.1";
+            // deviceip = "192.168.68.1";
+            deviceip = "172.16.20.40";
         }
         if (mqportstr.size() == 0)
         {

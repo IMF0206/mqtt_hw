@@ -96,12 +96,12 @@ void mqtt_json::create_json_add_device()
     dbhelper.sql_exec_with_return(sqlstr);
     if (dbhelper.getsqlresult().size() < 1)
     {
-        printf("iot.db does not have devices;");
+        printf("line : %d, iot.db does not have devices;", __LINE__);
         return;
     }
     cJSON* nodearr = cJSON_CreateArray();
     std::vector<std::string> statusvec = dbhelper.getsqlresult();
-    sqlstr = "select nodeid from node;";
+    sqlstr = "select deviceid from node;";
     dbhelper.sql_exec_with_return(sqlstr);
     std::vector<std::string> nodeidvec = dbhelper.getsqlresult();
     sqlstr = "select name from node;";
@@ -117,6 +117,7 @@ void mqtt_json::create_json_add_device()
             continue;
         }
         cJSON* nodeitem = cJSON_CreateObject();
+        printf("====%d=============%s======\n", i, nodeidvec[i].c_str());
         cJSON_AddStringToObject(nodeitem, "nodeId", nodeidvec[i].c_str());
         cJSON_AddStringToObject(nodeitem, "name", namevec[i].c_str());
         cJSON_AddStringToObject(nodeitem, "description", "test");
@@ -147,12 +148,12 @@ void mqtt_json::create_json_updatestatus_device(int status)
     dbhelper.sql_exec_with_return(sqlstr);
     if (dbhelper.getsqlresult().size() < 1)
     {
-        printf("iot.db does not have devices;");
+        printf("line : %d, iot.db does not have devices;", __LINE__);
         return;
     }
     cJSON* nodearr = cJSON_CreateArray();
     std::vector<std::string> statusvec = dbhelper.getsqlresult();
-    sqlstr = "select nodeid from node;";
+    sqlstr = "select deviceid from node;";
     dbhelper.sql_exec_with_return(sqlstr);
     std::vector<std::string> nodeidvec = dbhelper.getsqlresult();
     for (int i = 0; i < statusvec.size(); i++)
@@ -304,31 +305,40 @@ void mqtt_json::create_json_data_upload(frame_info* Frame_info)
             cJSON_AddStringToObject(param, "cmd", "pull_alert");
             cJSON_AddStringToObject(param, "deviceId", "1100001000170014");
             cJSON_AddStringToObject(root, "deviceId", "1100001000170014");
-            sqlstr = "select name from node where nodeid= '1100001000170014'";
+            sqlstr = "select name from node where deviceid= '1100001000170014'";
             dbhelper.sql_exec_with_return(sqlstr);
             if (dbhelper.getsqlresult().size() < 1)
             {
                 printf("iot.db does not have such deviceid.\n");
+                namestr = "test111";
             }
-            namestr = dbhelper.getsqlresult()[0];
+            else
+            {
+                namestr = dbhelper.getsqlresult()[0];
+            }
             tensionarr[0] = Frame_info->frame_data[3];
             tensionarr[1] = Frame_info->frame_data[2];
             tensionarr[2] = Frame_info->frame_data[1];
             tensionarr[3] = Frame_info->frame_data[0];
             hex2float(tensionarr, &tension);
-            cJSON_AddStringToObject(data, "tension", std::to_string(tension).c_str());
+            cJSON_AddStringToObject(data, "Traction_Data", std::to_string(tension).c_str());
             break;
         case 6:
             cJSON_AddStringToObject(param, "cmd", "inclination_alert");
             cJSON_AddStringToObject(param, "deviceId", "4143972352");
             cJSON_AddStringToObject(root, "deviceId", "4143972352");
-            sqlstr = "select name from node where nodeid= '4143972352'";
+            sqlstr = "select name from node where deviceid= '4143972352'";
             dbhelper.sql_exec_with_return(sqlstr);
             if (dbhelper.getsqlresult().size() < 1)
             {
                 printf("iot.db does not have such deviceid.\n");
+                namestr = "test2222";
             }
-            namestr = dbhelper.getsqlresult()[0];
+            else
+            {
+                namestr = dbhelper.getsqlresult()[0];
+            }
+
             anglexarr[0] = Frame_info->frame_data[3];
             anglexarr[1] = Frame_info->frame_data[2];
             anglexarr[2] = Frame_info->frame_data[1];
@@ -397,7 +407,7 @@ void mqtt_json::create_json_event_upload(frame_info* Frame_info)
     // std::string devicestr = dbhelper.getsqlresult()[0];
 
     // 使用平台侧的deviceId
-    std::string sqlstr = "select name from node where nodeid='1100001000170014'";
+    std::string sqlstr = "select name from node where deviceid='1100001000170014'";
     db_helper dbhelper(DB_FILE_PATH);
     // dbhelper.sql_exec_with_return(sqlstr);
     // if (dbhelper.getsqlresult().size() < 1)
@@ -419,7 +429,7 @@ void mqtt_json::create_json_event_upload(frame_info* Frame_info)
             cJSON_AddStringToObject(param, "event", "tension_alarm");
             cJSON_AddStringToObject(param, "deviceId", "1100001000170014");
             cJSON_AddStringToObject(root, "deviceId", "1100001000170014");
-            sqlstr = "select name from node where nodeid= '1100001000170014'";
+            sqlstr = "select name from node where deviceid= '1100001000170014'";
             dbhelper.sql_exec_with_return(sqlstr);
             if (dbhelper.getsqlresult().size() < 1)
             {
@@ -438,7 +448,7 @@ void mqtt_json::create_json_event_upload(frame_info* Frame_info)
             cJSON_AddStringToObject(param, "event", "angle_alarm");
             cJSON_AddStringToObject(param, "deviceId", "4143972352");
             cJSON_AddStringToObject(root, "deviceId", "4143972352");
-            sqlstr = "select name from node where nodeid= '4143972352'";
+            sqlstr = "select name from node where deviceid= '4143972352'";
             dbhelper.sql_exec_with_return(sqlstr);
             if (dbhelper.getsqlresult().size() < 1)
             {
@@ -569,12 +579,12 @@ void mqtt_json::create_json_plat_adddev()
     dbhelper.sql_exec_with_return(sqlstr);
     if (dbhelper.getsqlresult().size() < 1)
     {
-        printf("iot.db does not have devices;");
+        printf("line : %d, iot.db does not have devices;", __LINE__);
         return;
     }
     cJSON* nodearr = cJSON_CreateArray();
     std::vector<std::string> statusvec = dbhelper.getsqlresult();
-    sqlstr = "select nodeid from node;";
+    sqlstr = "select deviceid from node;";
     dbhelper.sql_exec_with_return(sqlstr);
     std::vector<std::string> nodeidvec = dbhelper.getsqlresult();
     sqlstr = "select name from node;";
@@ -624,7 +634,7 @@ void mqtt_json::create_json_plat_update(int status)
     dbhelper.sql_exec_with_return(sqlstr);
     if (dbhelper.getsqlresult().size() < 1)
     {
-        printf("iot.db does not have devices;");
+        printf("line : %d, iot.db does not have devices;", __LINE__);
         return;
     }
     cJSON* nodearr = cJSON_CreateArray();
@@ -669,7 +679,7 @@ void mqtt_json::create_json_plat_query()
     dbhelper.sql_exec_with_return(sqlstr);
     if (dbhelper.getsqlresult().size() < 1)
     {
-        printf("iot.db does not have devices;");
+        printf("line : %d, iot.db does not have devices;", __LINE__);
         return;
     }
     cJSON* nodearr = cJSON_CreateArray();

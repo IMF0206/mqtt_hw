@@ -24,11 +24,14 @@
 // #include "http_client.h"
 
 #include <memory.h>
+#include <map>
 
 // 安全测试用，正常为9999
 #define SOCKET_PORT 19999
 #define WUGUAN_IP "192.168.7.31"
 #define WUGUAN_PORT 23106
+
+std::map<std::string, std::string> ipaddrmap;
 
 int STATUS = 0;
 unsigned char ack_reply[] = {0x68, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0x16};
@@ -215,23 +218,40 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
     ips = inet_ntoa(adds->sin_addr);
     printf("%s\n", ips);
 
+    db_helper dbhandler("./iot.db");
+    std::string ipaddrstr = ips;
+    auto iter = ipaddrmap.find(ipaddrstr);
+    if (iter == ipaddrmap.end())
+    {
+        dbhandler.sql_exec_with_return("select id from port where ipaddr='" + ipaddrstr + "'");
+        if (!dbhandler.getsqlresult().empty())
+        {
+            ipaddrmap[ipaddrstr] = dbhandler.getsqlresult()[0];
+        }
+        else
+        {
+            ipaddrmap[ipaddrstr] = "";
+        }
+
+    }
+
     printf("accept a client %d\n", fd);
     // 发送传感器上线消息
     mqtt_pub mqttpub;
     mqttpub.mqtt_pub_login_msg();
     mqtt_plat mqttplat;
-    mqttplat.mqtt_platadddev();
-    mqttplat.mqtt_platupdatedev(1);
+    // mqttplat.mqtt_platadddev();
+    // mqttplat.mqtt_platupdatedev(1);
     sleep(1);
     mqttpub.mqtt_pub_status_update(1);
   
     struct event_base *base = (struct event_base*)arg;
   
-    //为这个客户端分配一个bufferevent  
+    //为这个客户端分配一个bufferevent
     struct bufferevent *bev =  bufferevent_socket_new(base, fd,  
-                                               BEV_OPT_CLOSE_ON_FREE);  
+                                               BEV_OPT_CLOSE_ON_FREE);
   
-    bufferevent_setcb(bev, socket_read_cb, NULL, socket_event_cb, NULL);
+    bufferevent_setcb(bev, socket_read_cb, NULL, socket_event_cb, (void*)ips);
     bufferevent_enable(bev, EV_READ | EV_PERSIST);
 }
 
@@ -246,11 +266,11 @@ void* event_thread(void* arg)
     printf("\n");
   
     struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(struct sockaddr_in));  
-    sin.sin_family = AF_INET;  
+    memset(&sin, 0, sizeof(struct sockaddr_in));
+    sin.sin_family = AF_INET;
     sin.sin_port = htons(SOCKET_PORT);
   
-    struct event_base *base = event_base_new();  
+    struct event_base *base = event_base_new();
     struct evconnlistener *listener  
             = evconnlistener_new_bind(base, listener_cb, (void*)base,  
                                       LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE,  
@@ -258,8 +278,8 @@ void* event_thread(void* arg)
                                       sizeof(struct sockaddr_in));  
     event_base_dispatch(base);
     
-    evconnlistener_free(listener);
-    event_base_free(base);
+    // evconnlistener_free(listener);
+    // event_base_free(base);
 }
 
 void* ipcstatus_thread(void* arg)
@@ -410,12 +430,12 @@ void* sysstatus_pthread(void* arg)
 
 int main()  
 {
-    db_helper dbhelper("/opt/nvr/nvr.db");
-    std::string sqlstr = "select devstatus from statusinfo;";
-    dbhelper.sql_exec_with_return(sqlstr);
-    int istatus = std::stoi(dbhelper.getsqlresult()[0].c_str());
-    printf("status is : %d\n", istatus);
-    STATUS = istatus;
+    // db_helper dbhelper("/opt/nvr/nvr.db");
+    // std::string sqlstr = "select devstatus from statusinfo;";
+    // dbhelper.sql_exec_with_return(sqlstr);
+    // int istatus = std::stoi(dbhelper.getsqlresult()[0].c_str());
+    // printf("status is : %d\n", istatus);
+    // STATUS = istatus;
     pthread_t event_tid, ipc_tid, sys_pid;
     pthread_create(&event_tid, NULL, event_thread, (void*)"event_thread");
     // pthread_create(&ipc_tid, NULL, ipcstatus_thread, (void*)"ipcstatus_thread");
@@ -526,7 +546,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             tensionarr[2] = Frame_info.frame_data[1];
             tensionarr[3] = Frame_info.frame_data[0];
             hex2float(tensionarr, &tension);
-            sql = "select threshold from property where name = 'tension' and nodeid = '1100001000170014'";
+            sql = "select threshold from property where name = 'tension' and deviceid = '1100001000170014'";
             if (dbHelper.sql_exec_with_return(sql.c_str()));
             {
                 printf("get node count error!\n");
@@ -554,14 +574,14 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             angleyarr[3] = Frame_info.frame_data[4];
             hex2float(anglexarr, &angleX);
             hex2float(angleyarr, &angleY);
-            sql = "select threshold from property where name = 'angleX' and nodeid = '1100001000170014'";
+            sql = "select threshold from property where name = 'angleX' and deviceid = '1100001000170014'";
             if (dbHelper.sql_exec_with_return(sql.c_str()));
             {
                 printf("get node count error!\n");
                 break;
             }
             anglexheld = std::stof(dbHelper.getsqlresult()[0]);
-            sql = "select threshold from property where name = 'angleY' and nodeid = '1100001000170014'";
+            sql = "select threshold from property where name = 'angleY' and deviceid = '1100001000170014'";
             if (dbHelper.sql_exec_with_return(sql.c_str()));
             {
                 printf("get node count error!\n");

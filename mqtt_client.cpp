@@ -146,6 +146,7 @@ int mqtt_client::mqtt_client_publish(char *top, int qos, char *msg, int len)
     pubmsg.qos = qos;
     pubmsg.retained = 0;
     deliveredtoken = 0;
+    printf("======%d========%s\n", __LINE__, pubmsg.payload);
     MQTTClient_publishMessage(m_client, top, &pubmsg, &token);
     printf("Waiting for publication of %s\n"
             "on topic %s for client\n",

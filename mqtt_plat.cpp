@@ -14,6 +14,7 @@ mqtt_plat::mqtt_plat()
     m_dbhelper = new db_helper(DB_FILE_PATH);
     m_myclient = new mqtt_client();
     m_passwd = NULL;
+    m_gatewayId = "test";
 }
 
 mqtt_plat::~mqtt_plat()
@@ -77,7 +78,7 @@ int mqtt_plat::mqtt_platconnect()
     // 获取gatewayId
     m_gatewayId = m_dbhelper->getsqlresult()[6];
     // 获取device
-    m_dbhelper->sql_exec_with_return("select deviceid from edgedev;");
+    m_dbhelper->sql_exec_with_return("select edgeid from edgedev;");
     string deviceid = m_dbhelper->getsqlresult()[0];
     string timestamp = get_timestamp();
     // 拼接登录的clientid

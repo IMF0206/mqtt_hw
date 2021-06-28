@@ -16,7 +16,7 @@ public:
     int mqtt_platupdatedev(int status);
     int mqtt_platreqdev();
     int mqtt_platcommandresp();
-    int mqtt_platdatasend(frame_info* Frame_info);
+    int mqtt_platdatasend(frame_info* Frame_info, std::string nodeidstr);
     // 平台->边设备
     int mqtt_plat_sub_init();
     // int mqtt_platadddevresp();

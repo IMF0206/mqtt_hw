@@ -31,7 +31,13 @@
 #define WUGUAN_IP "192.168.7.31"
 #define WUGUAN_PORT 23106
 
+// devicetype定义
+#define LALI_SENSOR 4
+#define QINJIAO_SENSOR 3
+
+// ip和nodeid的映射关系
 std::map<std::string, std::string> ipaddrmap;
+mqtt_plat mqttplat;
 
 int STATUS = 0;
 unsigned char ack_reply[] = {0x68, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x59, 0x16};
@@ -42,7 +48,7 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
   
 void socket_read_cb(struct bufferevent *bev, void *arg);  
 void socket_event_cb(struct bufferevent *bev, short events, void *arg);
-
+// 1D34CEA2
 int64_t hexToDec(unsigned char *source, int len)
 {
     int64_t sum = 0;
@@ -163,10 +169,10 @@ void parse_frame(unsigned char *frame, int len, frame_info* frameinfo)
     }
     else
     {
-        frameinfo->node_info[0] = frame[dateindex + 3];
-        frameinfo->node_info[1] = frame[dateindex + 2];
-        frameinfo->node_info[2] = frame[dateindex + 1];
-        frameinfo->node_info[3] = frame[dateindex];
+        frameinfo->node_info[0] = frame[dateindex];
+        frameinfo->node_info[1] = frame[dateindex + 1];
+        frameinfo->node_info[2] = frame[dateindex + 2];
+        frameinfo->node_info[3] = frame[dateindex + 3];
         // 命令码
         frameinfo->cmd = frame[dateindex + 4];
         dateindex += 5;
@@ -223,10 +229,22 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
     auto iter = ipaddrmap.find(ipaddrstr);
     if (iter == ipaddrmap.end())
     {
+        std::string sqlstr = "select id from port where ipaddr='" + ipaddrstr + "'";
         dbhandler.sql_exec_with_return("select id from port where ipaddr='" + ipaddrstr + "'");
+        printf("file : %s, line : %d, sql: %s\n", __FILE__, __LINE__, sqlstr.c_str());
         if (!dbhandler.getsqlresult().empty())
         {
-            ipaddrmap[ipaddrstr] = dbhandler.getsqlresult()[0];
+            sqlstr = "select id from node where portid='" + dbhandler.getsqlresult()[0] + "'";
+            dbhandler.sql_exec_with_return("select id from node where portid='" + dbhandler.getsqlresult()[0] + "'");
+            printf("file : %s, line : %d, sql: %s\n", __FILE__, __LINE__, sqlstr.c_str());
+            if (dbhandler.getsqlresult().empty())
+            {
+                ipaddrmap[ipaddrstr] = "";
+            }
+            else
+            {
+                ipaddrmap[ipaddrstr] = dbhandler.getsqlresult()[0];
+            }
         }
         else
         {
@@ -239,9 +257,10 @@ void listener_cb(evconnlistener *listener, evutil_socket_t fd,
     // 发送传感器上线消息
     mqtt_pub mqttpub;
     mqttpub.mqtt_pub_login_msg();
-    mqtt_plat mqttplat;
-    // mqttplat.mqtt_platadddev();
-    // mqttplat.mqtt_platupdatedev(1);
+    // mqtt_plat mqttplat;
+    mqttplat.mqtt_platconnect();
+    mqttplat.mqtt_platadddev();
+    mqttplat.mqtt_platupdatedev(1);
     sleep(1);
     mqttpub.mqtt_pub_status_update(1);
   
@@ -440,7 +459,7 @@ int main()
     pthread_create(&event_tid, NULL, event_thread, (void*)"event_thread");
     // pthread_create(&ipc_tid, NULL, ipcstatus_thread, (void*)"ipcstatus_thread");
     pthread_create(&sys_pid, NULL, sysstatus_pthread, (void*)"sysstatus_pthread");
-    mqtt_plat mqttplat;
+    // mqtt_plat mqttplat;
     mqttplat.mqtt_plat_sub_init();
     // mqttSub.mqtt_init();
     while(1)
@@ -454,7 +473,8 @@ int main()
 void socket_read_cb(struct bufferevent *bev, void *arg)  
 {
     printf("socket_read_cb\n");
-    unsigned char msg[4096];  
+    unsigned char msg[4096];
+    std::string ipaddrstr = (char*)arg;
   
     size_t len = bufferevent_read(bev, msg, sizeof(msg)-1 );
     printf("server read the data size : %d\n", len);
@@ -472,7 +492,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
     parse_frame(msg, len - 1, &Frame_info);
     mqtt_pub mqttPub;
     db_helper dbHelper(DB_FILE_PATH);
-    mqtt_plat mqttplat;
+    // mqtt_plat mqttplat;
     std::string sql = "";
     unsigned char bufInOut[10] = {msg[10], msg[11], msg[12], msg[13], 0x01, 0x00, 0x00, 0x00, 0x00, msg[14]};
     unsigned char bufAckOut[14] = {0};
@@ -482,6 +502,20 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
     unsigned char tensionarr[4] = {0};
     unsigned char anglexarr[4] = {0};
     unsigned char angleyarr[4] = {0};
+    std::string nodeidstr = "";
+    if (ipaddrmap.find(ipaddrstr) != ipaddrmap.end())
+    {
+        nodeidstr = ipaddrmap[ipaddrstr];
+    }
+    std::string deviceidstr = "";
+    if (!nodeidstr.empty())
+    {
+        std::string sql = "select deviceid from node where id ='" + nodeidstr + "'";
+        printf("%s, %d, sql:[%s]\n", __FILE__, __LINE__, sql.c_str());
+        dbHelper.sql_exec_with_return(sql);
+        deviceidstr = dbHelper.getsqlresult().empty() ? "" : dbHelper.getsqlresult()[0];
+    }
+
     switch(Frame_info.cmd)
     {
         case 0:
@@ -509,7 +543,8 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             bufAckOut[12] = (crc>>8)&0xFF;
             bufAckOut[13] = 0x16;
             bufferevent_write(bev, bufAckOut, sizeof(bufAckOut));
-            mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_event_upload_msg(&Frame_info, nodeidstr);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
             break;
         case 2:
             printf("角度告警\n");
@@ -529,7 +564,8 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             bufAckOut[12] = (crc>>8)&0xFF;
             bufAckOut[13] = 0x16;
             bufferevent_write(bev, bufAckOut, sizeof(bufAckOut));
-            mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_event_upload_msg(&Frame_info, nodeidstr);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
             break;
         case 3:
             printf("上报间隔\n");
@@ -540,14 +576,16 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
         case 5:
             printf("拉力数据\n");
             bufferevent_write(bev, ack_reply, sizeof(ack_reply));
-            mqttPub.mqtt_pub_date_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
+            mqttplat.mqtt_platdatasend(&Frame_info, nodeidstr);
             tensionarr[0] = Frame_info.frame_data[3];
             tensionarr[1] = Frame_info.frame_data[2];
             tensionarr[2] = Frame_info.frame_data[1];
             tensionarr[3] = Frame_info.frame_data[0];
             hex2float(tensionarr, &tension);
-            sql = "select threshold from property where name = 'tension' and deviceid = '1100001000170014'";
-            if (dbHelper.sql_exec_with_return(sql.c_str()));
+            sql = "select threshold from dynamicproperty where name = 'Traction_Data' and nodeid = '" + nodeidstr + "'";
+            dbHelper.sql_exec_with_return(sql);
+            if (dbHelper.getsqlresult().empty());
             {
                 printf("get node count error!\n");
                 break;
@@ -555,15 +593,15 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             if (std::stof(dbHelper.getsqlresult()[0]) < tension)
             {
                 Frame_info.cmd = 1;
-                mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
+                mqttPub.mqtt_pub_event_upload_msg(&Frame_info, nodeidstr);
             }
-            mqttplat.mqtt_platdatasend(&Frame_info);
             break;
         case 6:
             printf("角度数据\n");
             // ACK帧
             bufferevent_write(bev, ack_reply, sizeof(ack_reply));
-            mqttPub.mqtt_pub_date_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
+            mqttplat.mqtt_platdatasend(&Frame_info, nodeidstr);
             anglexarr[0] = Frame_info.frame_data[3];
             anglexarr[1] = Frame_info.frame_data[2];
             anglexarr[2] = Frame_info.frame_data[1];
@@ -591,9 +629,8 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             if (angleX > anglexheld || angleY > angleyheld)
             {
                 Frame_info.cmd = 2;
-                mqttPub.mqtt_pub_event_upload_msg(&Frame_info);
+                mqttPub.mqtt_pub_event_upload_msg(&Frame_info, nodeidstr);
             }
-            mqttplat.mqtt_platdatasend(&Frame_info);
             break;
         case 7:
             printf("声光报警自动启动\n");
@@ -606,7 +643,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
             printf("当前电池电压值+电量\n");
             // ACK帧
             bufferevent_write(bev, ack_reply, sizeof(ack_reply));
-            mqttPub.mqtt_pub_date_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
         }
 
             break;
@@ -684,7 +721,7 @@ void socket_read_cb(struct bufferevent *bev, void *arg)
         {
             printf("定位信息\n");
             bufferevent_write(bev, ack_reply, sizeof(ack_reply));
-            mqttPub.mqtt_pub_date_upload_msg(&Frame_info);
+            mqttPub.mqtt_pub_date_upload_msg(&Frame_info, nodeidstr);
             break;
         }
         case 100:

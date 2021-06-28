@@ -43,15 +43,24 @@ int ssl_error_cb(const char *str, size_t len, void *u)
 
 int mqtt_pub::mqtt_send(std::string jsonstr, int type)
 {
+    if (jsonstr.empty())
+    {
+        printf("jsonstr字符串为空，不发送\n");
+        return -1;
+    }
     m_dbhelper->sql_exec_with_return("select edgeid from edgedev;");
     // std::string cmd = "mosquitto_pub -t /v1/" + m_dbhelper->getsqlresult()[0] + "/topo/request -m " + jsonstr;
     // printf("cmd:%s\n", cmd.c_str());
     // system(cmd.c_str());
     std::string topicstr = "";
-    std::string deviceidstr = m_dbhelper->getsqlresult()[0];
-    if (deviceidstr.empty())
+    std::string deviceidstr;
+    if (m_dbhelper->getsqlresult().empty())
     {
         deviceidstr = "app1";
+    }
+    else
+    {
+        deviceidstr = m_dbhelper->getsqlresult()[0];
     }
     if (type == 0)
     {
@@ -73,9 +82,26 @@ int mqtt_pub::mqtt_send(std::string jsonstr, int type)
     int rc;
 
     m_dbhelper->sql_exec_with_return("select ipaddr from edgedev;");
-    std::string deviceip = m_dbhelper->getsqlresult()[0];
+    std::string deviceip;
+    if (m_dbhelper->getsqlresult().empty())
+    {
+        deviceip = "172.16.20.40";
+    }
+    else
+    {
+        deviceip = m_dbhelper->getsqlresult()[0];
+    }
+
     m_dbhelper->sql_exec_with_return("select mqport from edgedev;");
-    std::string mqportstr = m_dbhelper->getsqlresult()[0];
+    std::string mqportstr;
+    if (m_dbhelper->getsqlresult().empty())
+    {
+        mqportstr = "1883";
+    }
+    else
+    {
+        mqportstr = m_dbhelper->getsqlresult()[0];
+    }
     // 判断是否需要进行加密
     m_dbhelper->sql_exec_with_return("select secmode from edgedev;");
     std::string secmode;
@@ -204,20 +230,20 @@ int mqtt_pub::mqtt_pub_get_dev_msg()
     return 0;
 }
 
-int mqtt_pub::mqtt_pub_date_upload_msg(frame_info* Frame_info)
+int mqtt_pub::mqtt_pub_date_upload_msg(frame_info* Frame_info, std::string nodeidstr)
 {
     printf("%s, %d\n", __FILE__, __LINE__);
-    m_json->create_json_data_upload(Frame_info);
+    m_json->create_json_data_upload(Frame_info, nodeidstr);
     std::string jsonstr = m_json->get_jsonstr();
     std::replace(jsonstr.begin(), jsonstr.end(), '\n', ' ');
     mqtt_send(jsonstr, DATA);
     return 0;
 }
 
-int mqtt_pub::mqtt_pub_event_upload_msg(frame_info* Frame_info)
+int mqtt_pub::mqtt_pub_event_upload_msg(frame_info* Frame_info, std::string nodeidstr)
 {
     printf("%s, %d\n", __FILE__, __LINE__);
-    m_json->create_json_event_upload(Frame_info);
+    m_json->create_json_event_upload(Frame_info, nodeidstr);
     std::string jsonstr = m_json->get_jsonstr();
     std::replace(jsonstr.begin(), jsonstr.end(), '\n', ' ');
     mqtt_send(jsonstr, EVENT);

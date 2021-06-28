@@ -46,9 +46,9 @@ public:
     void create_json_add_device();
     void create_json_updatestatus_device(int status);
     void create_json_updatestatus_ipc(int status);
-    void create_json_data_upload(frame_info* Frame_info);
+    void create_json_data_upload(frame_info* Frame_info, std::string nodeidstr);
     void create_json_sysinfo_upload(float usercpu, float syscpu, float mem);
-    void create_json_event_upload(frame_info* Frame_info);
+    void create_json_event_upload(frame_info* Frame_info, std::string nodeidstr);
     void parse_json_device_response(char* msg);
     device_resp* get_deviceresp();
 
@@ -59,15 +59,17 @@ public:
     void create_json_plat_update(int status);
     void create_json_plat_query();
     void create_json_plat_command_resp();
-    void create_json_plat_date(frame_info* Frame_info);
+    void create_json_plat_date(frame_info* Frame_info, std::string nodeidstr);
     // 平台->边设备
     
-
+    //common
+    std::string get_nodedeviceid(std::string nodeinfo);
 private:
     std::string m_jsonstr;
     std::string m_json4plat;
     db_helper* m_dbhelper;
     device_resp* m_deviceresp;
+    void insert_batteryinfo_sql(std::string nodeid, std::string battery);
     
 };
 

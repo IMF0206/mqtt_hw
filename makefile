@@ -5,13 +5,13 @@ CXXFLAGS += -I./ -I./paho/ -I./sqlite -I./cJSON
 #CFLAGS += -I../socketmsg/
 CFLAGS += -g -fPIC -o2 -std=c11 -DOPENSSL
 CXXFLAGS += -g -fPIC -o2 -std=c++11 -DOPENSSL
-LDFLAGS += -L./openssl -L../nvr/lib/IMX6ULL/libevent -L../nvr/lib/IMX6ULL/paho -L../nvr/lib/IMX6ULL/sqlite -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread  -lpaho-mqtt3cs 
+LDFLAGS += -L./lib/x86 -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread  -lpaho-mqtt3cs -lstdc++
 #LDFLAGS += -L./ -levent -levent_core -levent_extra -levent_openssl -levent_pthreads -lsqlite3 -lpthread -lpaho-mqtt3a -lpaho-mqtt3as #-lpaho-mqtt3c
 
 #CC = gcc
-CC = arm-linux-gnueabihf-gcc
-CXX = arm-linux-gnueabihf-g++
-AR = arm-linux-gnueabihf-ar
+CC = gcc
+CXX = g++
+AR = ar
 
 SRCS=$(wildcard *.cpp *.c cjson/*.c)
 OBJS=$(patsubst %.cpp, %.o, $(SRCS))

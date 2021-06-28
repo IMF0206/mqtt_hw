@@ -114,8 +114,15 @@ int mqtt_client::mqtt_client_open(std::string addr, std::string clientid, std::s
 {
     int rc;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    MQTTClient_SSLOptions ssl_opts = MQTTClient_SSLOptions_initializer;
    
     // MQTTClient_create(&m_client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    if ((MQTTClient_create(&m_client, addr.c_str(), clientid.c_str(),
+        MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
+    {
+         printf("%s, %d:Failed to create client, return code %d\n", __FILE__, __LINE__, rc);
+         exit(EXIT_FAILURE);
+    }
     MQTTClient_create(&m_client, addr.c_str(), clientid.c_str(), MQTTCLIENT_PERSISTENCE_NONE, NULL);
     MQTTClient_setCallbacks(m_client, NULL, connlost, msgarrvd_plat, delivered);
 
@@ -123,7 +130,8 @@ int mqtt_client::mqtt_client_open(std::string addr, std::string clientid, std::s
     conn_opts.cleansession = 1;
     conn_opts.username = username.c_str();
     conn_opts.password = (const char*)passwd;
-    conn_opts.ssl->ssl_error_cb = ssl_error_cb;
+    printf("username : %s, passwd : %s\n", username.c_str(), conn_opts.password);
+    // conn_opts.ssl->ssl_error_cb = ssl_error_cb;
     if ((rc = MQTTClient_connect(m_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to connect, return code %d\n", rc);
@@ -147,6 +155,7 @@ int mqtt_client::mqtt_client_publish(char *top, int qos, char *msg, int len)
     pubmsg.retained = 0;
     deliveredtoken = 0;
     printf("======%d========%s\n", __LINE__, pubmsg.payload);
+    printf("topic : [%s], token : [%p]\n", top, &token);
     MQTTClient_publishMessage(m_client, top, &pubmsg, &token);
     printf("Waiting for publication of %s\n"
             "on topic %s for client\n",

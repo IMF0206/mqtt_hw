@@ -65,21 +65,58 @@ std::string mqtt_plat::get_timestamp()
 int mqtt_plat::mqtt_platconnect()
 {
     // 查询数据库平台表数据
-    m_dbhelper->sql_exec_multicol_return("select * from platinfo;");
+    m_dbhelper->sql_exec_with_return("select ipaddr from edgedev;");
     // 获取平台地址信息
-    string plataddr = m_dbhelper->getsqlresult()[1];
-    string platmqttport = m_dbhelper->getsqlresult()[2];
+    string plataddr;
+    if (!m_dbhelper->getsqlresult().empty())
+    {
+        plataddr = m_dbhelper->getsqlresult()[0];
+    }
+    else
+    {
+        plataddr = "127.0.0.1";
+    }
+    m_dbhelper->sql_exec_with_return("select mqport from edgedev;");
+    string platmqttport;
+    if (!m_dbhelper->getsqlresult().empty())
+    {
+        platmqttport = m_dbhelper->getsqlresult()[0];
+    }
+    else
+    {
+        platmqttport = "1883";
+    }
     // 获取鉴权类型
-    string authtype = m_dbhelper->getsqlresult()[3];
+    // string authtype = m_dbhelper->getsqlresult()[3];
+    string authtype = "testauth";
     // 获取签名类型
-    string signtype = m_dbhelper->getsqlresult()[4];
+    // string signtype = m_dbhelper->getsqlresult()[4];
+    string signtype = "testsign";
     // 获取secret值
-    string secret = m_dbhelper->getsqlresult()[5];
+    // string secret = m_dbhelper->getsqlresult()[5];
+    string secret = "testsecret";
     // 获取gatewayId
-    m_gatewayId = m_dbhelper->getsqlresult()[6];
+    // m_gatewayId = m_dbhelper->getsqlresult()[6];
+    m_dbhelper->sql_exec_with_return("select topic from edgedev;");
+    if (!m_dbhelper->getsqlresult().empty())
+    {
+        m_gatewayId = m_dbhelper->getsqlresult()[0];
+    }
+    else
+    {
+        m_gatewayId = "empty";
+    }
     // 获取device
     m_dbhelper->sql_exec_with_return("select edgeid from edgedev;");
-    string deviceid = m_dbhelper->getsqlresult()[0];
+    string deviceid;
+    if (!m_dbhelper->getsqlresult().empty())
+    {
+        m_gatewayId = m_dbhelper->getsqlresult()[0];
+    }
+    else
+    {
+        m_gatewayId = "empty";
+    }
     string timestamp = get_timestamp();
     // 拼接登录的clientid
     string clientidstr = deviceid + authtype + signtype + timestamp;
@@ -87,7 +124,11 @@ int mqtt_plat::mqtt_platconnect()
 	unsigned int passwdlen = 0;
     HmacEncode("sha256", timestamp.c_str(), timestamp.length(), secret.c_str(), secret.length(), m_passwd, passwdlen);
 
-    m_myclient->mqtt_client_open("tcp://" + plataddr + ":" + platmqttport, clientidstr, deviceid, m_passwd);
+    //TEST
+    // m_myclient->mqtt_client_open("tcp://" + plataddr + ":" + platmqttport, clientidstr, deviceid, m_passwd);
+    std::string printstr = "tcp://" + plataddr + ":" + platmqttport;
+    printf("mqtt_client_open args is [%s]\n", printstr.c_str());
+    m_myclient->mqtt_client_open("tcp://" + plataddr + ":" + platmqttport, clientidstr, "admin", (unsigned char*)"admin");
 
 }
 
@@ -132,10 +173,10 @@ int mqtt_plat::mqtt_platcommandresp()
     return 0;
 }
 
-int mqtt_plat::mqtt_platdatasend(frame_info* Frame_info)
+int mqtt_plat::mqtt_platdatasend(frame_info* Frame_info, std::string nodeidstr)
 {
     string topic = "/v1/devices/" + m_gatewayId + "/topo/datas";
-    m_json->create_json_plat_date(Frame_info);
+    m_json->create_json_plat_date(Frame_info, nodeidstr);
     string datastr = m_json->get_json4plat();
     m_myclient->mqtt_client_publish((char*)topic.c_str(), QOS, (char*)datastr.c_str(), datastr.size());
     return 0;
